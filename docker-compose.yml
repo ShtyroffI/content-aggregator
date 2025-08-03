@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: content_aggregator_bot
+    env_file:
+      - .env
+    depends_on:
+      - db
+    restart: on-failure
+
+  db:
+    image: postgres:16-alpine
+    container_name: content_aggregator_db
+
+    environment:
+      POSTGRES_DB: content_bot_db
+      POSTGRES_USER: ivan
+      POSTGRES_PASSWORD: aggregator228
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  pgdata:
