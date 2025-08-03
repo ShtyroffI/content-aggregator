@@ -54,5 +54,5 @@
 
 ## Автор
 
-- **Имя:** [Иван]
+- **Имя:** Иван
 - **GitHub:** [https://github.com/ShtyroffI](https://github.com/ShtyroffI)

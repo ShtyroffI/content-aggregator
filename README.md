@@ -54,5 +54,5 @@ After these steps, the bot will be up and running.
 
 ## Author
 
-- **Name:** [Ivan]
+- **Name:** Ivan
 - **GitHub:** [https://github.com/ShtyroffI](https://github.com/ShtyroffI)
