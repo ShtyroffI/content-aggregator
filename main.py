@@ -1,4 +1,5 @@
 import os
+import content_parser as parser
 
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, types
@@ -7,6 +8,7 @@ from aiogram.types import BotCommand
 from sqlalchemy import select
 from db.engine import async_session_factory
 from db.models import User, Subscription
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 load_dotenv()
 
@@ -114,10 +116,57 @@ async def set_main_menu(bot: Bot):
     ]
     await bot.set_my_commands(main_menu_commands)
 
+async def send_digest(bot: Bot):
+    print("Начинаю рассылку дайджеста...")
+    html_content = parser.get_html(parser.URL)
+    if not html_content:
+        return
+    articles = parser.parse_articles(html_content)
+    if not articles:
+        return
+    print(f"Найдено {len(articles)} статей. Начинаю обработку.")
+
+    async with async_session_factory() as session:
+        query = select(Subscription.keyword).distinct()
+        result = await session.execute(query)
+        keywords = result.scalars().all()
+    
+        if not keywords:
+            print("В базе нет ни одной активной подписки.")
+            return
+
+        print(f"Найдены активные подписки на ключевые слова: {keywords}")
+
+        for article in articles:
+            for keyword in keywords:
+                if keyword.lower() in article['title'].lower():
+                    stmt = select(Subscription).where(Subscription.keyword == keyword)
+                    subscribers_result = await session.execute(stmt)
+                    subscribers = subscribers_result.scalars().all()
+
+                    for sub in subscribers:
+                        try:
+                            await bot.send_message(
+                                chat_id=sub.user_id,
+                                text=f"Новая статья по вашей подписке '{keyword}'!\n\n{article['title']}\n{article['link']}",
+                                disable_web_page_preview=True
+                            )
+                        except Exception as e:
+                            print(f"Не удалось отправить сообщение пользователю {sub.user_id}: {e}")
+                    break
+    
+    print("Рассылка дайджеста завершена.")
+
 async def main():
     await set_main_menu(bot)
+
+    scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
+    scheduler.add_job(send_digest, trigger='interval', seconds=20, args=(bot,))
+    scheduler.start()
+
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     import asyncio
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
     asyncio.run(main())
